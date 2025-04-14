@@ -26,23 +26,21 @@ N <- 10000      # Number of individuals per region-year
 p <- 3          # Number of covariates
 
 # Simulate hyperparameters
-beta_tau <- rgamma(1, shape = 1, rate = 1)            # Gamma(1,1)
-tau0 <- rgamma(1, shape = 0.1, rate = 0.1)            # Gamma(0.1,0.1)
-w0 <- mvrnorm(1, mu = rep(0, nKnots), Sigma = (1/tau0)*S)  # Prior for mean spline weights
+beta_tau <- rgamma(1, shape =1, rate = 0.2)            # Gamma(1,1)
+tau0 <- rgamma(1, shape =0.1, rate =1)            # Gamma(0.1,0.1)
+w0 <- mvrnorm(1, mu = rep(0, nKnots), Sigma = solve((1/tau0)*S))  # Prior for mean spline weights
 
 # Regression coefficients: beta ~ Normal(0, 10I)
-beta <- mvrnorm(1, mu = rep(0, p), Sigma = diag(10, p))
+beta <- mvrnorm(1, mu = rep(0, p), Sigma = solve(diag(10, p)))
 
 # Variance of alpha_it 
-sigma2_alpha <- 1/rgamma(1, shape = 10, rate = 1)
+sigma2_alpha <- 1/rgamma(1, shape =10, rate = 1)
 sigma_alpha <- sqrt(sigma2_alpha)
 
 # Simulate f_it = eta_it + alpha_it for each region
 f_mat <- matrix(NA, nrow = I, ncol = T)
 
 for(i in 1:I){
-  tau_i <- rgamma(1, shape = 5, rate = beta_tau)                 # tau_i ~ Gamma
-  w_i <- mvrnorm(1, mu = w0, Sigma = (1/tau_i)*S)                # w_i ~ Normal(w0, precision)
   eta_i <- as.vector(Z %*% w_i)                                  # η_i = Z * w_i
   alpha_i <- rnorm(T, mean = 0, sd = sigma_alpha)                # α_it ~ N(0, σ²)
   f_mat[i, ] <- eta_i + alpha_i                                  # f_it = η_it + α_it
@@ -87,8 +85,7 @@ mtext("alpha_i", side=4, line=3)
 legend("topleft", legend=c("eta_i", "alpha_i"), col=c("blue", "red"), lty=1)
 
 # Histogram of prior predictive p
-hist(sim_data$p, breaks = 50, col = "lightblue", 
+hist(sim_data$p, breaks = 50, col = "lightblue",probability = T, 
      main = "Prior Predictive of p", xlab = "p")
 
-# Proportion of y = 1
-table(sim_data$y) / nrow(sim_data)
+
