@@ -49,7 +49,7 @@ update_w_0 <- function(tau_0, tau_i, w_i, S) {
    #Posterior mean 
   mean_posterior <- weighted_sum / total_tau
   #  Posterior sigma 
-  sigma_posterior <- solve(S / total_tau)
+  sigma_posterior <- (S / total_tau)
   #  Sample from posterior
   w_0_new <- MASS::mvrnorm(1, mean_posterior, sigma_posterior)
   

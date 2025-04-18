@@ -21,22 +21,16 @@ alpha_it_new <- matrix(rnorm(14 * 23, mean = 0, sd = sqrt(true_sigma2_alpha)), n
 tau_i_new <- rgamma(23, shape = true_shape_tau_i, rate = true_rate_tau_i)
 tau_0_new <- true_tau_0
 w_0_new <- mvrnorm(1, mu = rep(0, 6), Sigma = solve((1/tau_0_new) * S))
-w_i_new <- matrix(NA, nrow = N, ncol = K)
-for (i in 1:N) {
-  cov_i <- solve(tau_i_new[i] * solve(S))
-  w_i_new[i, ] <- mvrnorm(1, mu = w_0_new, Sigma = cov_i)
-}
 
 
 
-initial_values = list(
-  alpha = alpha_it_new,
-  w_0=w_0_new,
-  tau_i=tau_i_new
-  
-  )
 
 
+load('initial_values.RData')
+
+
+S = diag(1,6)
+source('qi_mcmc_main.R')
 posterior = stoch_gradient_logistic (Y,X,nIters=12000, nThin=10, initial_values, alpha_sigma=10, beta_sigma=1,alpha_tau0 = 0.1,beta_tau0 = 0.1,shape_beta_tau=1,rate_beta_tau=1,shape_tau_i=2.1,tau_i_rate=beta_tau_new)
 plot(1:1200,posterior$tau_i_mcmc,type = 'l')
 
