@@ -11,7 +11,7 @@ update_sigma_random_effects = function( alpha_sigma, beta_sigma, alpha )#alpha c
 }
 
 
-update_tau0 = function(w_0, alpha_tau0,beta_tau0) {
+update_tau0 = function(w_0, alpha_tau0,beta_tau0,S) {
   #calculate the parameters of the full conditional
   K = length(w_0)
   alpha_tau0_posterior = alpha_tau0+ K / 2
@@ -31,30 +31,59 @@ update_beta_tau <- function(tau_i, shape_beta_tau, rate_beta_tau , shape_tau_i )
   return(beta_tau_new)
 }
 
-update_tau_i <- function(w_i, w_0, shape_tau_i, tau_i_rate) {
-    K =length(w_i)
+#update_tau_i <- function(w_i, w_0, shape_tau_i, tau_i_rate) {
+  #  K =length(w_i)
    # calculate the parameters of the full conditional
-   tau_i_shape_posterior<-shape_tau_i+K/2
-   tau_i_rate_posterior <-tau_i_rate+0.5* as.numeric(t(w_i - w_0) %*% solve(S) %*% (w_i - w_0))
+   #tau_i_shape_posterior<-shape_tau_i+K/2
+   #tau_i_rate_posterior <-tau_i_rate+0.5* as.numeric(t(w_i - w_0) %*% solve(S) %*% (w_i - w_0))
    # Draw the new value
-   tau_i_new=rgamma(1, shape = tau_i_shape_posterior, rate = tau_i_rate_posterior)
-   return(tau_i_new)
+   #tau_i_new=rgamma(1, shape = tau_i_shape_posterior, rate = tau_i_rate_posterior)
+   #return(tau_i_new)
+#}
+
+update_tau_i <- function(w_i, w_0, shape_tau_i, tau_i_rate) {
+  N = ncol(w_i)  # number of regions
+  K = nrow(w_i)  # number of spline parameters per region
+  
+  tau_i_new = rep(NA, N)
+  S_inv = solve(S)
+  
+  for (i in 1:N) {
+    diff = w_i[, i] - w_0
+    shape_post = shape_tau_i + K / 2
+    rate_post = tau_i_rate + 0.5 * as.numeric(t(diff) %*% S_inv %*% diff)
+    tau_i_new[i] = rgamma(1, shape = shape_post, rate = rate_post)
+  }
+  
+  return(tau_i_new)
 }
+
+
+
+
+
 
 
 update_w_0 <- function(tau_0, tau_i, w_i, S) {
   total_tau <- tau_0 + sum(tau_i)
-  weighted_list <- mapply(function(w, tau) tau * w, w_i, tau_i, SIMPLIFY = FALSE)
-  weighted_sum <- Reduce("+", weighted_list)
+  #weighted_list <- mapply(function(w, tau) tau * w, w_i, tau_i, SIMPLIFY = FALSE)
+  #weighted_sum <- Reduce("+", weighted_list)
+  weighted_matrix <- matrix(0, nrow = nrow(w_i), ncol = ncol(w_i))  # 6 x 23
+  for (i in 1:length(tau_i)) {
+    weighted_matrix[, i] <- tau_i[i] * w_i[, i]
+  }
+  weighted_sum <- rowSums(weighted_matrix)
    #Posterior mean 
   mean_posterior <- weighted_sum / total_tau
   #  Posterior sigma 
   sigma_posterior <- (S / total_tau)
   #  Sample from posterior
-  w_0_new <- MASS::mvrnorm(1, mean_posterior, sigma_posterior)
+  w_0_new <- mvrnorm(1, mean_posterior, sigma_posterior)
   
   return(w_0_new)
 }
+
+
 
 
 
