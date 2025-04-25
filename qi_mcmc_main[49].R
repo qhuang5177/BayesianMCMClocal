@@ -1,4 +1,4 @@
-stoch_gradient_logistic = function(Y,X,nIters=12000, nThin=10, initial_values, alpha_sigma, beta_sigma,alpha_tau0,beta_tau0,shape_beta_tau,rate_beta_tau,shape_tau_i,tau_i_rate )
+stoch_gradient_logistic = function(nIters=12000, nThin=10, initial_values, alpha_sigma, beta_sigma,alpha_tau0,beta_tau0,shape_beta_tau,rate_beta_tau,shape_tau_i,tau_i_rate )
 {
   
   
@@ -32,7 +32,7 @@ stoch_gradient_logistic = function(Y,X,nIters=12000, nThin=10, initial_values, a
     #sigma_alpha = update_sigma_random_effects( alpha_sigma, beta_sigma, alpha )
     
     #Update precision of spline term tao_0
-    #tau_0=update_tau0(w_0, alpha_tau0,beta_tau0)
+    #tau_0=update_tau0(w_0, alpha_tau0,beta_tau0,S)
     
     #update beta_tau
     #beta_tau=update_beta_tau (tau_i, shape_beta_tau, rate_beta_tau , shape_tau_i ) 
