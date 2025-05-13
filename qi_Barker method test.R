@@ -126,30 +126,64 @@ log_posterior = function(params,x,y, Z, sigma_alpha, S, w0,tau_i,nTimes, n_regio
   
 }   
   
-  
-  
-  
-  
-  
 
 
+update_stepsize <- function(mcmc_idx, nBurn, target_lower, target_upper,
+                            accept_matrix, stepsize) {
+  window <- nrow(accept_matrix) - 1  # length of windows
+  nVars <- ncol(accept_matrix)      # length of variable
+  
+  for (j in 1:nVars) {
+    # 1. calcualte the acceptance ratio
+    acceptance_ratio <- mean(accept_matrix[1:window, j])
+    
+    # 2. adjust stepszie
+    if (acceptance_ratio > target_upper) {
+      stepsize[j] <- stepsize[j] * 1.005
+    } else if (acceptance_ratio < target_lower) {
+      stepsize[j] <- stepsize[j] * 0.995
+    }
+    
+    # 3. calculate the average（only for the half of brun-in period）
+    if (mcmc_idx > 0.5 * nBurn) {
+      average[j] <- average[j] + 2.0 * stepsize[j] / nBurn
+    }
+  }
+  
+  # 4. final iteration in burn-in 
+  if (mcmc_idx == nBurn) {
+    stepsize <- average
+  }
+  
+  return(list(stepsize = stepsize, average = average))
+}
+
+
+
+  
+  
   
   
 #calculation  barker method
-barker_update = function(current_param) {
+barker_update = function(current_param,step_size,x, y, Z, sigma_alpha, S, w0, tau_i, nTimes, n_region, K, sim_data) {
   
-  # noise
-  noise = rnorm(length(current_param),0,1)
+  
+ #generate noise
+  noise<-rnorm(length(current_param),0,step_size)
   #gradient
   b=rep(0,length(current_param))
+  prob = rep(0, length(current_param))  
   beta_x=gradients(current_param,x,y,Z, sigma_alpha, S, w0,tau_i,nTimes, n_region, K,sim_data)
-  prob = rep(NA, length(current_param))  
+ 
   for (i in 1:length(b)) {
     prob[i]=1/(1+exp(-beta_x[i]*noise[i]))
     b[i]=sample(c(-1,1),1,prob = c(1-prob[i],prob[i]))
   }
+  
+  
+  
   #proposal
-  proposal=current_param+b*noise
+  proposal=current_param+b*step_size
   
   # 2. Compute log posterior
   log_post_current = log_posterior(current_param,x, y,Z, sigma_alpha, S, w0,tau_i,nTimes, n_region, K)
@@ -163,24 +197,31 @@ barker_update = function(current_param) {
   
   beta_y=gradients(proposal,x, y,Z, sigma_alpha, S, w0,tau_i,nTimes, n_region, K,sim_data)
   
-  for (i in 1:length(current_param)) {
-    num = 1 + exp((current_param[i] - proposal[i]) * beta_x[i])
-    den = 1 + exp((proposal[i] - current_param[i]) * beta_y[i])
-    correction_logterms[i] = log(num) - log(den)
-  }
-  correction_sum = sum(correction_logterms)
+
+    for (i in 1:length(current_param)) {
+      beta1 = -beta_y[i] * (current_param[i] - proposal[i])
+      beta2 = -beta_x[i] * (proposal[i] - current_param[i])
+      
+      # Barker trick: log(1 / (1 + exp(-β))) = -log(1 + exp(-β))
+      log_term1 = -(pmax(beta1, 0) + log1p(exp(-abs(beta1))))
+      log_term2 = +(pmax(beta2, 0) + log1p(exp(-abs(beta2))))
+      
+      correction_logterms[i] = log_term1 + log_term2
+    }
   
   #  log acceptance ratio
-  log_acceptance_ratio = log_ratio + correction_sum
-  
+  log_acceptance_ratio = log_ratio + sum(correction_logterms)
   # 5. Accept or reject
   u = log(runif(1))
-  if (u < log_acceptance_ratio) {
-    next_point=proposal
-  } else {
-  next_point=current_param
-  }
-  return(next_point)
+  accepted = u < log_acceptance_ratio
+ 
+  
+  accepted_vector <- as.numeric(b != 0 & accepted)
+  
+  next_point <- if (accepted) proposal else current_param
+  
+  
+  return(list(param = next_point, accepted = accepted_vector))
 }
 
 
