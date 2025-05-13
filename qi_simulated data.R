@@ -22,8 +22,8 @@ S <- solve(S)
 # 2. Overall model settings
 I <- 23         # Number of regions
 T <- nTimes     # Number of years
-N <- 10000      # Number of individuals per region-year
-p <- 3          # Number of covariates
+N <- 10 # Number of individuals per region-year
+p <- 6   # Number of covariates
 
 # Simulate hyperparameters
 beta_tau <- rgamma(1, shape =1, rate = 100)            # Gamma(1,1)
@@ -57,7 +57,12 @@ sim_data <- data.frame(
 # Simulate covariates
 sim_data$x1 <- rbinom(n = nrow(sim_data), size = 1, prob = 0.5)     # x1 ~ Bernoulli
 sim_data$x2 <- runif(n = nrow(sim_data), min = -1, max = 1)         # x2 ~ Uniform
-sim_data$x3 <- rnorm(n = nrow(sim_data), mean = 0, sd = 1)          # x3 ~ Normal
+sim_data$x3 <- rnorm(n = nrow(sim_data), mean = 0, sd = 1)    
+sim_data$x4 <- rnorm(n = nrow(sim_data), mean = 0, sd = 2)    
+sim_data$x5 <- rnorm(n = nrow(sim_data), mean = 1, sd = 1)    
+sim_data$x6 <- rnorm(n = nrow(sim_data), mean = 2, sd = 2.4)    
+
+# x3 ~ Normal
 
 # Assign random intercept f_it to each individual
 sim_data$f <- NA
@@ -69,7 +74,7 @@ for(i in 1:I){
 }
 
 # Generate linear predictor and probabilities
-sim_data$lp <- sim_data$f + beta[1]*sim_data$x1 + beta[2]*sim_data$x2 + beta[3]*sim_data$x3
+sim_data$lp <- sim_data$f + beta[1]*sim_data$x1 + beta[2]*sim_data$x2 + beta[3]*sim_data$x3+beta[4]*sim_data$x4+beta[4]*sim_data$x4+beta[4]*sim_data$x4
 expit <- function(x) { 1 / (1 + exp(-x)) }
 sim_data$p <- expit(sim_data$lp)
 
