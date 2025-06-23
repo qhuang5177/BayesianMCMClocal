@@ -12,8 +12,9 @@ spline_setup <- function( nTimes, nKnots )
   S              <- rbind(0, cbind(0, S))
   S[1, 1]        <- 0.1                        # Precision for the intercept  
   Q              <- solve(S) 
+  return(list(Z = Z, S = S, S_inv = Q))  
+ # return(list( Z=Z, S_inv=S, S=Q ))#S:penalty matrix Q: inverse matrix
   
-  return(list( Z=Z, S_inv=S, S=Q ))#S:penalty matrix Q: inverse matrix
   
 }
 
@@ -116,6 +117,41 @@ generate_initial_values <- function(n_region, nTimes, P, nKnots) {
     w0           = rep(0.5, nKnots)                                
   ))
 }
+
+
+#batch sampler
+select_batch <- function(dataset, 
+                         batch_type = c( "random", "stratified"), 
+                         prop = 0.2, #The proportion of the sample to be drawn from the population
+                         min_per_group = 10) {
+
+  N <- nrow(dataset)
+# Random sampling 
+  if (batch_type == "random") {
+    batch_size <- ceiling(N * prop)
+    batch_idx <- sample(1:N, batch_size, replace = FALSE)
+    sample_data=dataset[batch_idx, ]
+    return(sample_data)
+  }
+#stratified sampling
+  if (batch_type == "stratified") {
+    group_index <- individuals_index(dataset$region, dataset$time)
+    grouped_data <- split(dataset, group_index)
+    
+    selected_list <- lapply(grouped_data, function(group_data) {
+      group_n <- nrow(group_data)
+      n_sample <- min(group_n, max(min_per_group, ceiling(prop * group_n)))
+      group_data[sample(1:group_n, n_sample), ]
+    })
+  #clean and combine the output, turn it from list to dataframe  
+    sample_data <- do.call(rbind, selected_list)
+    rownames(sample_data) <- NULL
+    return(sample_data)
+  }
+}
+
+
+
 
 
 

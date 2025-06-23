@@ -22,7 +22,11 @@ barker_mcmc <- function(
     rate_beta_tau = 100,
     shape_tau_i = 10,
     nThin = 1,               # Thinning: if there are too many MCMC iterations, you can't save all of the samples
-    window = 100             # How many iterations back to look to adjust the stepsize
+    window = 100,            # How many iterations back to look to adjust the stepsize
+    use_batch = FALSE,       # New parameter to control batch selection
+    batch_type = "random",   # Default to random batch if using batch
+    prop = 0.2,              # Proportion of sample to be drawn if using batch
+    min_per_group = 10       # Minimum samples per group for stratified sampling
     )
 {
   
@@ -42,7 +46,7 @@ barker_mcmc <- function(
   Z   <- tmp$Z
   # Comment: No need to invert many time within the function. You can invert here once
   S_inv <- tmp$S_inv
-  S     <- tmp$Q
+  S     <- tmp$S
   
   
  
@@ -65,6 +69,23 @@ barker_mcmc <- function(
   #barker_param <- flatten_params(alpha, beta, w_i)# this function is added in utilities.R file
   #n_barker     <- length(barker_param)  
   
+  if (use_batch) {
+    # Select the batch using select_batch function
+    sample_data <- select_batch( dataset, 
+                                batch_type = batch_type, 
+                                prop = prop, 
+                                min_per_group = min_per_group)
+    scaling_factor <- nrow(dataset) / nrow(sample_data)
+  } else {
+    # If no batch selection, use the original dataset
+    sample_data <- dataset
+    scaling_factor <- 1
+  }
+  
+  
+  
+  
+
   
   # To store the MCMC samples
   nSave      <- nIter/nThin
@@ -74,8 +95,8 @@ barker_mcmc <- function(
   sigma_alpha_mcmc = rep(NA,nSave)
   tau_0_mcmc=rep(NA,nSave)
   beta_tau_mcmc=rep(NA,nSave)
-  tau_i_mcmc = matrix(NA,,length(init$tau_i),nrow = nSave)
-  w_0_mcmc = matrix(NA,ncol = length(init$w0), nrow = nSave)
+  tau_i_mcmc = matrix(NA,length(init$tau_i),nSave)
+  w_0_mcmc = matrix(NA,length(init$w0),nSave)
   
   
   
@@ -99,14 +120,14 @@ barker_mcmc <- function(
   for ( iter in 1:nIter ) {
     
     # Update the random regression coefficients, random effects, spline parameters 
-    tmp                    <- barker_update( beta, alpha, w_i, step, x, dataset, Z, sigma2_alpha, S_inv, w0, tau_i, index )
+    tmp                    <- barker_update( beta, alpha, w_i, step, x, sample_data, Z, sigma2_alpha, S_inv, w0, tau_i, index,scaling_factor = scaling_factor  )
     beta                   <- tmp$beta
     w_i                    <- tmp$w_i
     alpha                  <- tmp$alpha
     HistoryAccepted0[iter] <- 1*tmp$accepted
     
     #Gibbs step
-    gibbs_out              <-gibbs_update( alpha_sigma, beta_sigma, alpha, w_0, alpha_tau0, beta_tau0, S_inv, tau_i, shape_beta_tau, rate_beta_tau, shape_tau_i, tau_i_rate, w_i, S)
+    gibbs_out              <-gibbs_update( alpha_sigma, beta_sigma, alpha, w0, alpha_tau0, beta_tau0, S_inv, tau_i, shape_beta_tau, rate_beta_tau, shape_tau_i, w_i, S)
     sigma2_alpha           <- gibbs_out$ sigma2_alpha
     tau0                   <- gibbs_out$tau0
     beta_tau               <- gibbs_out$beta_tau
@@ -134,8 +155,8 @@ barker_mcmc <- function(
       alpha_mcmc[,,idx] <- alpha
       w_mcmc[,,idx]     <- w_i
       # Rest of parameters to be added here
-      sigma_alpha_mcmc[idx] <-sigma_alpha
-      tau_0_mcmc[idx]<-tau_0
+      sigma_alpha_mcmc[idx] <-sigma2_alpha
+      tau_0_mcmc[idx]<-tau0
       beta_tau_mcmc[idx]<-beta_tau
       tau_i_mcmc[,idx]<-tau_i
       w_0_mcmc[,idx]<-w0
