@@ -18,7 +18,7 @@ predict_p = function( beta, w_i, alpha, x, Z, index ) {
 # Comment: removed y as input, already in sim_data
 # Comment: better to have alpha, beta, and w as inputs alpha is the small fluctuation
 # Comment: for alpha, easier to have the variance as input
-gradients = function( alpha, beta, w_i, x, Z, sigma2_alpha, S_inv, w0, tau_i, dataset, index, beta_var=10 ) {
+gradients = function( alpha, beta, w_i, x, Z, sigma2_alpha, S_inv, w0, tau_i, dataset, index, beta_var=10, scaling_factor=1 ) {
   
   
   # Dataset parameters
@@ -34,7 +34,7 @@ gradients = function( alpha, beta, w_i, x, Z, sigma2_alpha, S_inv, w0, tau_i, da
   # Gradient for beta
   # Comment: make 10 a function input, even with a default value
   # Calculating y-p is not expensive but would be ideal to only calculate once
-  beta_gradient = t(x) %*% (dataset$y - p) - (1/beta_var) * beta
+  beta_gradient =scaling_factor*(t(x) %*% (dataset$y - p) - (1/beta_var) * beta)
   
   
   # Gradient for alpha
@@ -44,7 +44,7 @@ gradients = function( alpha, beta, w_i, x, Z, sigma2_alpha, S_inv, w0, tau_i, da
     idx1 = dataset$region==i
     for ( t in 1:nTimes) {
       idx                    = (dataset$time==t) & idx1
-      grad_sum               = sum( dataset$y[idx]-p[idx] )
+      grad_sum               = scaling_factor*sum( dataset$y[idx]-p[idx] )
       alpha_it_gradient[t,i] = grad_sum - alpha[t,i]/sigma2_alpha
     }
   }
@@ -61,7 +61,7 @@ gradients = function( alpha, beta, w_i, x, Z, sigma2_alpha, S_inv, w0, tau_i, da
     for (t in 1:nTimes) {
       idx = which( (dataset$time==t) & idx1 )
       for (j in idx) {
-        grad_sum = grad_sum + (dataset$y[j] - p[j]) * Z[t, ]
+        grad_sum = grad_sum + scaling_factor*(dataset$y[j] - p[j]) * Z[t, ]
       }
     }
     w_grad[, i] = grad_sum - tau_i[i] * (S_inv %*% (w_i[, i] - w0))
@@ -83,7 +83,7 @@ gradients = function( alpha, beta, w_i, x, Z, sigma2_alpha, S_inv, w0, tau_i, da
 # Comment: variance of beta better be input
 # Comment: w0 is a vector!
 # Comment: not sure what the accepted vector was doing
-log_posterior = function( alpha, beta, w_i, x, y, Z, sigma2_alpha, S_inv, w0, tau_i, index, beta_var=10 ) {
+log_posterior = function( alpha, beta, w_i, x, y, Z, sigma2_alpha, S_inv, w0, tau_i, index, beta_var=10, scaling_factor = 1 ) {
   
   # 
   nTimes   = dim(alpha)[1]
@@ -94,7 +94,7 @@ log_posterior = function( alpha, beta, w_i, x, y, Z, sigma2_alpha, S_inv, w0, ta
   # 1. likelihood part
   p_model = predict_p( beta, w_i, alpha, x, Z, index)
   #y_model=rbinom(length(p_model),1,p_model)
-  loglikelihood = sum(y * log(p_model) + (1 - y) * log(1 - p_model))
+  loglikelihood = scaling_factor*sum(y * log(p_model) + (1 - y) * log(1 - p_model))
   
   # 2. prior part
   
@@ -126,7 +126,7 @@ log_posterior = function( alpha, beta, w_i, x, y, Z, sigma2_alpha, S_inv, w0, ta
 # Comment: n_region can be evaluated from the data
 # Comment: removed y from inputs, it's already in sim_data. Fewer inputs, more readability
 # Comment: the fitted probabilities are calculated twice, once for likelihood and once for gradient. Could only do one time as it contains expensive exponentials
-barker_update = function( beta, alpha, w_i, step_size, x, dataset, Z, sigma2_alpha, S_inv, w0, tau_i, index ) {
+barker_update = function( beta, alpha, w_i, step_size, x, dataset, Z, sigma2_alpha, S_inv, w0, tau_i, index,scaling_factor = scaling_factor  ) {
   
   
   # generate noise
@@ -134,7 +134,7 @@ barker_update = function( beta, alpha, w_i, step_size, x, dataset, Z, sigma2_alp
   noise         <- rnorm(length(current_param),step_size,0.1*step_size)
   
   # current gradient
-  beta_x = gradients( alpha, beta, w_i, x, Z, sigma2_alpha, S_inv, w0, tau_i, dataset, index, beta_var=10 )
+  beta_x = gradients( alpha, beta, w_i, x, Z, sigma2_alpha, S_inv, w0, tau_i, dataset, index, beta_var=10,scaling_factor)
   
   
   # Propose new values 
@@ -163,8 +163,8 @@ barker_update = function( beta, alpha, w_i, step_size, x, dataset, Z, sigma2_alp
     
   
   # 2. Compute log posterior
-  log_post_current  = log_posterior( alpha, beta, w_i, x, dataset$y, Z, sigma2_alpha, S_inv, w0, tau_i, index, beta_var=10 ) 
-  log_post_proposal = log_posterior( alpha_new, beta_new, w_i_new, x, dataset$y, Z, sigma2_alpha, S_inv, w0, tau_i, index, beta_var=10 ) 
+  log_post_current  = log_posterior( alpha, beta, w_i, x, dataset$y, Z, sigma2_alpha, S_inv, w0, tau_i, index, beta_var=10,scaling_factor ) 
+  log_post_proposal = log_posterior( alpha_new, beta_new, w_i_new, x, dataset$y, Z, sigma2_alpha, S_inv, w0, tau_i, index, beta_var=10,scaling_factor ) 
   
     
   # 3. Calculate log ratio
@@ -173,7 +173,7 @@ barker_update = function( beta, alpha, w_i, step_size, x, dataset, Z, sigma2_alp
   
 
   # Gradient at the proposed state
-  beta_y=gradients( alpha_new, beta_new, w_i_new, x, Z, sigma2_alpha, S_inv, w0, tau_i, dataset, index, beta_var=10 )
+  beta_y=gradients( alpha_new, beta_new, w_i_new, x, Z, sigma2_alpha, S_inv, w0, tau_i, dataset, index, beta_var=10,scaling_factor )
   
   
   # 4. Barker acceptance probability
