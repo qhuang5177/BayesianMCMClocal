@@ -12,7 +12,7 @@ spline_setup <- function( nTimes, nKnots )
   S              <- rbind(0, cbind(0, S))
   S[1, 1]        <- 0.1                        # Precision for the intercept  
   Q              <- solve(S) 
-  #return(list(Z = Z, S = S, S_inv = Q))  
+ 
   return(list( Z=Z, S_inv=S, S=Q ))#S:penalty matrix Q: inverse matrix
   
   
