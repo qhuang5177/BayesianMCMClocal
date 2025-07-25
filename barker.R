@@ -151,7 +151,7 @@ barker_update = function( beta, alpha, w_i, step_size, x, dataset, Z, sigma2_alp
   #select batch data
   x_batch       <- x[batch_index, , drop = FALSE]
   data_batch    <- dataset[batch_index, ]
-  index_batch <- index[batch_index,]
+  index_batch <- index[batch_index]
   
   
   # current gradient
