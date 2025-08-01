@@ -1,3 +1,78 @@
+minibatch_numbers = function( region, time, method, prop=0.2, min_sample=1 )
+{
+  
+  # For faster sampling of indices in SG, we will save the ID by region and time
+  idx     = 1:length(region)
+  indices = list()
+  
+  # First calculate the sample size per time and region
+  nRegions <- length(table(region))
+  nTimes   <- length(table(time)) 
+  N        <- matrix(NA,nTimes,nRegions) 
+  for ( i in 1:nRegions ) {
+    indices[[i]] = list()
+    idx1 = region==i
+    for ( t in 1:nTimes ) {
+      idx2 = time==t
+      indices[[i]][[t]] = idx[idx1&idx2]
+      N[t,i] = sum(idx1&idx2)
+    }
+    names(indices)
+  }
+  
+  
+  # Now calculate how many individuals to sample per region
+  if ( method=='full' ) {
+    N_sample = N
+  } else if ( method=='stratified' ) {
+    N_sample = round(N*prop)
+    N_sample[N_sample<=0] = 1
+  } else if ( method=='stratified_min' ) {
+    N_sample = 0*N+min_sample
+    N_sample = (N<N_sample)*N + (N>=N_sample)*N_sample
+    N_rest = round(length(region)*prop)-sum(N_sample)
+    if (N_rest<=0) {
+      print(paste0('With the specified minimum, the proportion of data used is ',round(100*sum(N_sample)/length(region),2),'%'))
+    } else {
+      N_sample = N_sample + round(N*(N_rest/length(region)))
+    }
+  } else {
+    stop("The possible methods are 'full/stratified/stratified_min'")
+  }
+  
+  
+  # Now find the scaling factors
+  scaling_factor_beta  = sum(N_sample)/length(region)
+  scaling_factor_w     = apply(N_sample,2,sum)/apply(N,2,sum)
+  scaling_factor_alpha = N_sample/N 
+  
+  
+  # output
+  return(list(
+    scaling_factor_beta=scaling_factor_beta,
+    scaling_factor_w=scaling_factor_w,
+    scaling_factor_alpha=scaling_factor_alpha,
+    N_total=N,
+    N_sample=N_sample,
+    indices=indices
+  ))
+  
+}
+
+
+
+minibatch_select = function( indices, N_sample, N_total, sample_size )
+{
+  nRegions = dim(N_total)[2]
+  nTimes   = dim(N_total)[1]
+  batch = rep(0,sample_size)
+  for (i in 1:nRegions) {
+    for (j in 1:nTimes) {
+      batch[sample(indices[[i]][[j]],N_sample[j,i],replace=FALSE)]=1
+    }
+  }
+  return(batch)
+}
 
 
 # Function that sets up the spline design and penalisation matrix provided the number of time points and number of knots

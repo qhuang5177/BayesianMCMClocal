@@ -1,7 +1,5 @@
 # Libraries
 library(MASS)
-library(mgcv)
-library(ggplot2)
 
 
 # Function that generates datasets for simulation studies/testing
@@ -9,61 +7,27 @@ library(ggplot2)
 # Comment: Made sample size to be a vector rather than a single number
 simulate_data = function(
     nTimes,              # number of time points
-    nKnots,              # number of knots
-    N,                   # vector of sample size(reigion*how many people withiin it)
-    p_vec = NULL
+    N,                   # vector of sample size(region*how many people within it)
+    sigma_alpha,         # standard deviation of the random effects
+    p_vec                # vector of desired average prevalence 
     )
 {
-  
-  
-  # Spline design matrices
-  blank_data     <- data.frame(y = rnorm(nTimes, 0, 1), t = 1:nTimes)
-  knots          <- list(t = seq(1, nTimes, length.out = nKnots))
-  dummy_spline   <- jagam(y ~ s(t, bs = "cs", k = nKnots), file = "dummy.jags", data = blank_data)
-  Z              <- dummy_spline$jags.data$X 
-  S              <- dummy_spline$jags.data$S1
-  S              <- rbind(0, cbind(0, S))
-  S[1, 1]        <- 0.1                        # Precision for the intercept  
-  S              <- solve(S)   
-  
-  
-  # Simulate hyperparameters
-  #beta_tau <- rgamma(1, shape =1, rate = 100)                        # Gamma(1,1)
-  #tau0     <- rgamma(1, shape =10, rate =1)                          # Gamma(0.1,0.1)
-  #w0       <- mvrnorm(1, mu = rep(0, nKnots), Sigma = ((1/tau0)*S))  # Prior for mean spline weights
   
   
   # Regression coefficients: beta ~ Normal(0, 10I)
   p    <- 6 # Comment: defined the number of variables here
   # Comment: variance of the regression coefficients too large. It makes sense to have a weekly informative prior, but generating from it creates extreme values of prevalence
   beta <- mvrnorm(1, mu = rep(0, p), Sigma = (diag(.01, p)))
- 
 
-  # Variance of alpha_it 
-  #sigma2_alpha <- 1/rgamma(1, shape =10, rate = 1)
-  #sigma_alpha  <- sqrt(sigma2_alpha)
-  
   
   # Region-specific parameters
   I <- length(N)
   # Comment: better to save all these quantities so you can check if they have been estimated okay
   f_mat <- eta <- alpha <- matrix( NA, nrow = I, ncol=nTimes )
   p_vec <- rep(p_vec, length.out = I)
-  
-  #w     <- matrix( NA, nrow=I, ncol=nKnots ) 
-  #tau   <- rep(NA,I)
-  #for(i in 1:I){
-    #tau[i]     <- rgamma(1, shape = 10, rate = beta_tau)                 # tau_i ~ Gamma
-   # w[i,]      <- mvrnorm(1, mu = w0, Sigma = ( (1/tau[i])*S ) )         # w_i ~ Normal(w0, precision)
-    #eta[i,]    <- as.vector( Z %*% w[i,] )                               # η_i = Z * w_i
-    #alpha[i,]  <- rnorm( nTimes, mean = 0, sd =0.1)             # α_it ~ N(0, σ²)
-    #f_mat[i, ] <- eta[i,] + alpha[i,]                                    # f_it = η_it + α_it
-  #}
-  
-  
   for(i in 1:I){
     eta[i, ]   <- log(p_vec[i]/(1-p_vec[i]))
-    alpha[i, ] <- rnorm(nTimes, mean = 0, sd = 0.08)
+    alpha[i, ] <- rnorm(nTimes, mean = 0, sd = sigma_alpha)
     f_mat[i, ] <- eta[i, ] + alpha[i, ]
   }
   
@@ -105,17 +69,9 @@ simulate_data = function(
   
   
   # Generate linear predictor and probabilities
-  # Comment: would be ideal to have more general code for the line below, e.g. put all X into a matrix?
-  # exclude_names <- c("region", "time", "f", "lp", "p", "y")
-  #covariate_names <- setdiff(names(sim_data), exclude_names)
-  #X_mat <- as.matrix(sim_data[, covariate_names])
-  #sim_data$lp <- sim_data$f + as.vector(X_mat %*% beta)
-  
-  # Comment: there was a typo in the previous code, all last 3 terms were beta[4]*x4
-  sim_data$lp <- sim_data$f + beta[1]*sim_data$x1 + beta[2]*sim_data$x2 + beta[3]*sim_data$x3+beta[4]*sim_data$x4+beta[5]*sim_data$x5+beta[6]*sim_data$x6
- 
+   sim_data$lp <- sim_data$f + beta[1]*sim_data$x1 + beta[2]*sim_data$x2 + beta[3]*sim_data$x3+beta[4]*sim_data$x4+beta[5]*sim_data$x5+beta[6]*sim_data$x6
    expit       <- function(x) { 1 / (1 + exp(-x)) }
-  sim_data$p  <- expit(sim_data$lp)
+   sim_data$p  <- expit(sim_data$lp)
   
   
   # Simulate y ~ Bernoulli(p)
@@ -124,15 +80,13 @@ simulate_data = function(
   
   # Return the dataset to the user
   # Comment: good to return a list to the user with simulated values of all parameters so you can test the code
-  # Comment: in this code w is KxI whereas in the MCMC it is IxK
   return(
     list(
       sim_data     = sim_data, 
       beta         = beta,
       eta          = t(eta),
       alpha        = t(alpha),
-      Z            = Z
-    
+      sigma_alpha  = sigma_alpha 
     )
   )
 
