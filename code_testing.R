@@ -23,7 +23,7 @@ I       <- length(table(dataset$region))
 
 # Specifications of knots and MCMC iterations
 nKnots  <- 3
-nThin   <- 1000
+nThin   <- 1250
 nBurnin <- nThin*250
 nMCMC   <- nThin*2500
 nIter   <- nMCMC+nBurnin
@@ -67,6 +67,9 @@ fit <- barker_mcmc( nIter=nIter, nBurnin=nBurnin, init=init, nKnots=nKnots, data
 # 输出耗时（单位：秒）
 cat("Total time taken: ", round(mcmc_time["elapsed"], 2), "seconds\n")
 
+
+# Save the MCMC fit
+save(fit,file='reference_chain.RData')
 
 
 

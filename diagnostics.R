@@ -83,9 +83,9 @@ save(fit,file='fit_SGMCMC_mix_600000.RData')
 
 
 nSave = dim(fit$beta)[2]
-nBurn = 1000
-source('../plot.R')
-p_vec = log(combination$prevalence/(1-combination$prevalence))
+nBurn = 500
+source('plot.R')
+
 
 # Regression coefficients
 P = dim(fit$beta)[1]
@@ -97,6 +97,7 @@ for ( i in 1:P ) {
 
 
 # Smooth terms
+nTimes      <- dim(fit$Z)[1]
 smooth_mcmc <- array( NA, c(nSave,nTimes,I) )
 for ( i in 1:nSave ) {
   smooth_mcmc[i,,] = fit$Z %*% fit$w[,,i]
@@ -104,7 +105,7 @@ for ( i in 1:nSave ) {
 for ( i in 1:I ) {
   name = paste0( 'Smooth term region ', i) 
   polygons( smooth_mcmc[-c(1:nBurn),,i], MAIN=name)
-  abline( h=p_vec[i] ,col=2, lwd=2, lty=2, main=name )
+  #abline( h=p_vec[i] ,col=2, lwd=2, lty=2, main=name )
 }
 
 
@@ -123,8 +124,9 @@ for ( i in 1:I ) {
 
 # Combined 
 p_mcmc = alpha_mcmc+smooth_mcmc
+p_mcmc = exp(p_mcmc)/(1+exp(p_mcmc))
 for ( i in 1:I ) {
   name = paste0( 'Logit-prevalence region ', i) 
   polygons( p_mcmc[-c(1:nBurn),,i], MAIN=name)
-  lines( p_vec[i]+dt$alpha[,i], pch=19, col=2, cex=2 )
+  #lines( p_vec[i]+dt$alpha[,i], pch=19, col=2, cex=2 )
 }
