@@ -1,6 +1,6 @@
 # Clear the workspace
 rm(list = ls())       # Comment: always best to start a simulation script with this so that no objects from previous sessions corrupt any calculations
-
+ID = 1
 
 
 # libraries and scripts
@@ -23,9 +23,9 @@ I       <- length(table(dataset$region))
 
 # Specifications of knots and MCMC iterations
 nKnots  <- 3
-nThin   <- 1250
-nBurnin <- nThin*250
-nMCMC   <- nThin*2500
+nThin   <- 250
+nBurnin <- nThin*500
+nMCMC   <- nThin*2000
 nIter   <- nMCMC+nBurnin
 
 
@@ -56,16 +56,20 @@ fit <- barker_mcmc( nIter=nIter, nBurnin=nBurnin, init=init, nKnots=nKnots, data
                     rate_beta_tau    = 100,
                     shape_tau_i      = 10,            
                     window           = 100, 
-                    batch_type       = "full",     
+                    batch_type       = "stratified",     
                     hybrid           = FALSE,          
                     barker_frequency = 10,    # How often to do Barker in hybrid
                     prop = 0.1,               # Proportion of sample to be drawn if using batch
                     min_per_group = 10        # Minimum samples per group for stratified sampling
                     ) 
 })
+name <- paste0('./posteriors/regular_',ID,'.RData')
+save(fit,file=name)
 
 # 输出耗时（单位：秒）
 cat("Total time taken: ", round(mcmc_time["elapsed"], 2), "seconds\n")
+
+
 
 
 # Save the MCMC fit
