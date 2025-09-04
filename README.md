@@ -9,8 +9,6 @@ The workflow includes:
 
 Defining a Bayesian hierarchical model\
 Simulating data for validation\
-Deriving full conditionals and gradients of the log-posterior\
-Implementing hybrid MCMC algorithms\
 Validating performance on simulated data\
 Applying the model to real-world data for posterior inference and covariate effect estimation\
 All code for model specification, algorithm implementation, and empirical evaluation is included in this repository.
