@@ -11,4 +11,4 @@ Simulating data for validation\
 Validating performance on simulated data\
 Applying the model to real-world data for posterior inference and covariate effect estimation\
 All code for model specification, algorithm implementation, and empirical evaluation is included in this repository.
-
+The hpc script and Barker.cpp are written by my supervisor.
